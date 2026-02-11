@@ -1,66 +1,61 @@
+import time
 from kubernetes import client, config, watch
-import datetime
+from src.brain.synapse import Synapse
 
-def get_pod_logs(api_client, pod_name, namespace):
-    """
-    Fetches the recent logs from the crashed pod.
-    This is the 'Analyze' step of MAPE-K.
-    """
+def get_crash_logs(core_v1, pod_name, namespace="default"):
     try:
-        logs = api_client.read_namespaced_pod_log(
-            name=pod_name, 
-            namespace=namespace, 
-            tail_lines=50
+        logs = core_v1.read_namespaced_pod_log(
+            name=pod_name,
+            namespace=namespace,
+            tail_lines=50,
+            previous=True
         )
         return logs
     except Exception as e:
         return f"Could not retrieve logs: {e}"
 
-def main():
-    print("KubeWhisperer Observer Starting")
-    print(f" [i] Time: {datetime.datetime.now()}")
-
-    # 1. Connect
-    try:
-        config.load_kube_config()
-        print(" [✓] Connected to Kubernetes Cluster")
-    except Exception as e:
-        print(f" [X] Connection Failed: {e}")
-        return
-
-    # 2. Setup
+def monitor_cluster():
+    print(" [agent] Loading Kubernetes Config...")
+    config.load_kube_config()
     v1 = client.CoreV1Api()
     w = watch.Watch()
-    
-    print(" [i] Listening for 'CrashLoopBackOff' events... (Press Ctrl+C to stop)")
 
-    # 3. Watch Loop
+    print(" [agent] Connecting to Neural Engine...")
+    brain = Synapse()
+
+    print(" [agent] KubeWhisperer Observer Active. Watching for crashes...")
+
     try:
-        for event in w.stream(v1.list_pod_for_all_namespaces):
+        for event in w.stream(v1.list_namespaced_pod, namespace="default"):
             pod = event['object']
-            
+            event_type = event['type']
+
+            if event_type != "MODIFIED":
+                continue
+
             if pod.status.container_statuses:
                 for container in pod.status.container_statuses:
-                    
-                    if container.state.waiting and container.state.waiting.reason == "CrashLoopBackOff":
+                    if container.state.waiting and container.state.waiting.reason in ["CrashLoopBackOff", "ImagePullBackOff", "ErrImagePull"]:
                         
-                        print(f"\nCRASH DETECTED")
-                        print(f"      Pod: {pod.metadata.name}")
-                        print(f"      Reason: {container.state.waiting.reason}")
+                        error_reason = container.state.waiting.reason
+                        print(f"\n [!] CRASH DETECTED: {pod.metadata.name} -> {error_reason}")
                         
-                        print("      [+] Fetching logs for analysis...")
+                        print(" [agent] Fetching evidence...")
+                        logs = get_crash_logs(v1, pod.metadata.name)
+                        
+                        print(" [agent] Consulting Knowledge Base & Gemini...")
+                        diagnosis = brain.reason(logs)
+                        
+                        print("\n" + "="*40)
+                        print(" 🤖 KUBEWHISPERER DIAGNOSIS")
+                        print("="*40)
+                        print(diagnosis)
+                        print("="*40 + "\n")
+                        
+                        time.sleep(10)
 
-                        logs = get_pod_logs(v1, pod.metadata.name, pod.metadata.namespace)
-                        
-                        print(f"      LOG SNIPPET START ")
-                        print(logs.strip())
-                        print(f"     LOG SNIPPET END ")
-                        print("-" * 30)
-                        
     except KeyboardInterrupt:
-        print("\n [i] Observer stopped by user.")
-    except Exception as e:
-        print(f"\n [X] Error: {e}")
+        print(" [agent] Shutting down.")
 
 if __name__ == "__main__":
-    main()
+    monitor_cluster()
