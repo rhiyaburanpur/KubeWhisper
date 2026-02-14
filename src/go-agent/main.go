@@ -5,53 +5,65 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 func main() {
-	fmt.Println(" KubeWhisperer Go-Agent Starting...")
+	fmt.Println(" KubeWhisperer Go-Agent: Watcher Mode Active")
 
-	// 1. Locate Kubeconfig
-	// On Windows, this is usually %USERPROFILE%\.kube\config
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Printf("[X] Error getting home dir: %v\n", err)
-		os.Exit(1)
-	}
+	// 1. Config Setup
+	userHomeDir, _ := os.UserHomeDir()
 	kubeConfigPath := filepath.Join(userHomeDir, ".kube", "config")
-
-	// 2. Load Configuration
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {
-		fmt.Printf("[X] Error loading kubeconfig: %v\n", err)
-		fmt.Println("    (Make sure your Kubernetes cluster is running!)")
-		os.Exit(1)
+		panic(err.Error())
 	}
 
-	// 3. Create the API Client (The "Clientset")
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		fmt.Printf("[X] Error creating K8s client: %v\n", err)
-		os.Exit(1)
+		panic(err.Error())
 	}
 
-	fmt.Println("[✓] Connected to Kubernetes Cluster!")
+	// 2. The Watcher
+	// We subscribe to the event stream instead of polling
+	fmt.Println("[i] Listening for CrashLoopBackOff events...")
 
-	// 4. Simple Polling Loop (Proof of Connection)
-	// This loops forever, asking the cluster "How many pods exist?"
-	for {
-		pods, err := clientset.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			fmt.Printf("[!] Error listing pods: %v\n", err)
-		} else {
-			fmt.Printf("[i] Cluster Status: Found %d pods in 'default' namespace.\n", len(pods.Items))
+	watcher, err := clientset.CoreV1().Pods("default").Watch(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// 3. The Event Loop
+	// This channel receives events as they happen in real-time
+	ch := watcher.ResultChan()
+	for event := range ch {
+		// Type assertion: Convert the generic object to a Pod
+		pod, ok := event.Object.(*corev1.Pod)
+		if !ok {
+			continue
 		}
 
-		// Sleep for 5 seconds to act like a gentle observer
-		time.Sleep(5 * time.Second)
+		// We only care about modifications (status updates)
+		if event.Type != "MODIFIED" {
+			continue
+		}
+
+		// Check Container Statuses for Crashes
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if containerStatus.State.Waiting != nil {
+				reason := containerStatus.State.Waiting.Reason
+
+				if reason == "CrashLoopBackOff" || reason == "ImagePullBackOff" {
+					fmt.Printf("\n[!] CRASH DETECTED: Pod %s -> %s\n", pod.Name, reason)
+
+					// TODO: Phase 6 - We will send this signal to the Python Brain here
+					fmt.Println("    [->] Capturing context... (Pending Link to Brain)")
+				}
+			}
+		}
 	}
 }
