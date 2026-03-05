@@ -8,3 +8,7 @@ numpy>=2.1.0
 requests>=2.31.0
 beautifulsoup4>=4.12.3
 python-dotenv>=1.0.0
+
+# Phase 5: Server
+fastapi>=0.109.0
+uvicorn>=0.27.0
