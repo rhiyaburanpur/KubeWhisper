@@ -41,18 +41,34 @@ func shouldDiagnose(podName string) bool {
 func sendCrashReport(podName string, logs string) {
 	fmt.Printf(" [->] Sending crash report for %s to Neural Engine...\n", podName)
 
-	report := CrashReport{
-		PodName:  podName,
-		ErrorLog: logs,
+	// FIX: Brain URL configurable for in-cluster service discovery
+	brainURL := os.Getenv("BRAIN_URL")
+	if brainURL == "" {
+		brainURL = "http://localhost:8000/analyze" // local dev fallback
 	}
 
+	apiKey := os.Getenv("KUBEWHISPERER_API_KEY")
+	if apiKey == "" {
+		fmt.Println(" [X] KUBEWHISPERER_API_KEY not set. Aborting request.")
+		return
+	}
+
+	report := CrashReport{PodName: podName, ErrorLog: logs}
 	jsonData, err := json.Marshal(report)
 	if err != nil {
 		fmt.Printf(" [X] JSON Error: %v\n", err)
 		return
 	}
 
-	resp, err := http.Post("http://localhost:8000/analyze", "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", brainURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Printf(" [X] Request build error: %v\n", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", apiKey) // FIX: Auth header
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Printf(" [X] Brain Connection Failed: %v\n", err)
 		return
@@ -61,10 +77,9 @@ func sendCrashReport(podName string, logs string) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf(" [X] Error reading response body: %v\n", err)
+		fmt.Printf(" [X] Error reading response: %v\n", err)
 		return
 	}
-
 	fmt.Println("\n" + string(body))
 }
 

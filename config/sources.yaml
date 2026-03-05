@@ -1,0 +1,20 @@
+# KubeWhisperer Knowledge Sources
+# Add any URL the librarian should scrape and embed into ChromaDB.
+# 'type' is stored as metadata on each chunk for source attribution.
+#
+# To add a new source: add a url + type entry and re-run:
+#   python -m src.brain.librarian
+
+sources:
+  - url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/"
+    type: "official_docs"
+
+  - url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/"
+    type: "official_docs"
+
+  - url: "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/"
+    type: "official_docs"
+
+  # Add internal runbooks or wikis below:
+  # - url: "https://your-wiki/runbook/oomkilled"
+  #   type: "runbook"
