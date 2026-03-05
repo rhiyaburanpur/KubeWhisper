@@ -4,7 +4,9 @@ from pydantic import BaseModel
 from src.brain.synapse import Synapse
 import uvicorn
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 # --- Auth Setup ---
 API_KEY = os.getenv("KUBEWHISPERER_API_KEY")
 if not API_KEY:
