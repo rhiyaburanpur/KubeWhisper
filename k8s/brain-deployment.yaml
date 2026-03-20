@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubewhisperer-brain
+  namespace: default
+  labels:
+    app: kubewhisperer-brain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubewhisperer-brain
+  template:
+    metadata:
+      labels:
+        app: kubewhisperer-brain
+    spec:
+      containers:
+        - name: brain
+          image: kubewhisperer-brain:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kubewhisperer-secrets
+                  key: GEMINI_API_KEY
+            - name: KUBEWHISPERER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kubewhisperer-secrets
+                  key: KUBEWHISPERER_API_KEY
+            - name: DB_PATH
+              value: /data/db_storage
+            - name: LIBRARIAN_CONFIG
+              value: /config/sources.yaml
+          volumeMounts:
+            - name: db-storage
+              mountPath: /data/db_storage
+            - name: config-volume
+              mountPath: /config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: db-storage
+          emptyDir: {}
+        - name: config-volume
+          configMap:
+            name: kubewhisperer-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubewhisperer-brain
+  namespace: default
+spec:
+  selector:
+    app: kubewhisperer-brain
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000

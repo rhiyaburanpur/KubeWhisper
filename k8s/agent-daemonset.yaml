@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubewhisperer-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubewhisperer-agent
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubewhisperer-agent
+subjects:
+  - kind: ServiceAccount
+    name: kubewhisperer-agent
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: kubewhisperer-agent
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kubewhisperer-agent
+  namespace: default
+  labels:
+    app: kubewhisperer-agent
+spec:
+  selector:
+    matchLabels:
+      app: kubewhisperer-agent
+  template:
+    metadata:
+      labels:
+        app: kubewhisperer-agent
+    spec:
+      serviceAccountName: kubewhisperer-agent
+      containers:
+        - name: agent
+          image: kubewhisperer-agent:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KUBEWHISPERER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kubewhisperer-secrets
+                  key: KUBEWHISPERER_API_KEY
+            - name: BRAIN_URL
+              value: http://kubewhisperer-brain.default.svc.cluster.local:8000/analyze
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"

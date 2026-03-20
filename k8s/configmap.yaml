@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubewhisperer-config
+  namespace: default
+data:
+  sources.yaml: |
+    sources:
+      - url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/"
+        type: "official_docs"
+
+      - url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/"
+        type: "official_docs"
+
+      - url: "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/"
+        type: "official_docs"
