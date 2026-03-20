@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential
 from src.brain.memory import KnowledgeBase
 
+
 class Synapse:
     def __init__(self):
         load_dotenv()
@@ -12,9 +13,8 @@ class Synapse:
             raise ValueError("CRITICAL: GEMINI_API_KEY environment variable not set.")
 
         self.client = genai.Client(api_key=self.api_key)
-        self.model_id = 'models/gemini-2.5-flash'
+        self.model_id = "models/gemini-2.5-flash"
 
-        # FIX: DB path now read from env var, falls back to "db_storage" for local dev
         db_path = os.getenv("DB_PATH", "db_storage")
         self.memory = KnowledgeBase(persistence_path=db_path)
         print(f" [synapse] Neuro-Symbolic Link Established (Model: {self.model_id}).")
@@ -24,7 +24,7 @@ class Synapse:
         try:
             response = self.client.models.generate_content(
                 model=self.model_id,
-                contents=prompt
+                contents=prompt,
             )
             return response.text
         except Exception as e:
@@ -32,10 +32,16 @@ class Synapse:
             raise
 
     def reason(self, error_log):
+        """
+        Runs the RAG pipeline and returns a (diagnosis, rag_hit) tuple.
+        rag_hit is True if the vector store returned at least one context chunk.
+        """
         print(" [synapse] Retrieving relevant knowledge...")
         context = self.memory.recall(error_log, n_results=1)
 
-        if not context or not context[0]:
+        rag_hit = bool(context and context[0])
+
+        if not rag_hit:
             context_text = "No relevant documentation found in knowledge base."
             print(" [synapse] No context found. Relying on model knowledge.")
         else:
@@ -66,11 +72,10 @@ Format as:
         try:
             diagnosis = self._ask_gemini(prompt)
             print(" [synapse] Analysis complete.")
-            return diagnosis
+            return diagnosis, rag_hit
         except Exception as e:
-            # FIX: Generic fallback — no longer assumes a specific error type
             error_msg = (
-                f"⚠️ AI Analysis Failed: {type(e).__name__}\n\n"
+                f"AI Analysis Failed: {type(e).__name__}\n\n"
                 f"Fallback: Unable to generate AI diagnosis. Investigate manually:\n"
                 f"1. Check logs:      kubectl logs <pod-name> --previous\n"
                 f"2. Inspect pod:     kubectl describe pod <pod-name>\n"
@@ -78,4 +83,4 @@ Format as:
                 f"4. Resource usage:  kubectl top pod <pod-name>"
             )
             print(f" [synapse] ERROR: {e}")
-            return error_msg
+            return error_msg, rag_hit

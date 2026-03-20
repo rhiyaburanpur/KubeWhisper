@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -17,18 +18,47 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// CrashReport matches the Pydantic model in the Python API.
+// CrashReport matches the Pydantic model in the Python Brain API.
 type CrashReport struct {
 	PodName  string `json:"pod_name"`
 	ErrorLog string `json:"error_log"`
 }
 
-var diagnosisCache = make(map[string]time.Time)
+// logEntry is the structure for every JSON log line emitted by the agent.
+type logEntry struct {
+	Level   string `json:"level"`
+	Service string `json:"service"`
+	Msg     string `json:"msg"`
+	Pod     string `json:"pod,omitempty"`
+	TraceID string `json:"trace_id,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func logJSON(level, msg, pod, traceID, errStr string) {
+	entry := logEntry{
+		Level:   level,
+		Service: "go-agent",
+		Msg:     msg,
+		Pod:     pod,
+		TraceID: traceID,
+		Error:   errStr,
+	}
+	line, _ := json.Marshal(entry)
+	fmt.Println(string(line))
+}
+
+// --- Deduplication Cache ---
+
+var (
+	diagnosisCache   = make(map[string]time.Time)
+	diagnosisCacheMu sync.Mutex
+)
 
 const cacheTTL = 5 * time.Minute
 
-// shouldDiagnose tracks pod events to prevent redundant diagnoses.
 func shouldDiagnose(podName string) bool {
+	diagnosisCacheMu.Lock()
+	defer diagnosisCacheMu.Unlock()
 	lastSeen, exists := diagnosisCache[podName]
 	if exists && time.Since(lastSeen) < cacheTTL {
 		return false
@@ -37,53 +67,149 @@ func shouldDiagnose(podName string) bool {
 	return true
 }
 
-// sendCrashReport sends the crash report payload to the Python Brain Server via HTTP POST.
-func sendCrashReport(podName string, logs string) {
-	fmt.Printf(" [->] Sending crash report for %s to Neural Engine...\n", podName)
+// --- Circuit Breaker ---
+//
+// States:
+//   closed   — normal operation, requests pass through
+//   open     — brain is down, requests are blocked for cooldownDuration
+//   half-open — one probe request is allowed to test if brain recovered
 
-	// FIX: Brain URL configurable for in-cluster service discovery
+type circuitState int
+
+const (
+	closed   circuitState = iota
+	open     circuitState = iota
+	halfOpen circuitState = iota
+)
+
+type circuitBreaker struct {
+	mu               sync.Mutex
+	state            circuitState
+	failures         int
+	failureThreshold int
+	lastFailureAt    time.Time
+	cooldownDuration time.Duration
+}
+
+func newCircuitBreaker() *circuitBreaker {
+	return &circuitBreaker{
+		state:            closed,
+		failureThreshold: 3,
+		cooldownDuration: 30 * time.Second,
+	}
+}
+
+// allow returns true if the request should be sent to the brain.
+func (cb *circuitBreaker) allow() bool {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	switch cb.state {
+	case closed:
+		return true
+	case open:
+		if time.Since(cb.lastFailureAt) >= cb.cooldownDuration {
+			cb.state = halfOpen
+			logJSON("info", "Circuit half-open: probing brain", "", "", "")
+			return true
+		}
+		return false
+	case halfOpen:
+		return true
+	}
+	return false
+}
+
+// recordSuccess resets the breaker to closed.
+func (cb *circuitBreaker) recordSuccess() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	cb.state = closed
+	cb.failures = 0
+}
+
+// recordFailure increments the failure counter and opens the circuit if the threshold is reached.
+func (cb *circuitBreaker) recordFailure() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	cb.failures++
+	cb.lastFailureAt = time.Now()
+	if cb.failures >= cb.failureThreshold {
+		cb.state = open
+		logJSON("warn", fmt.Sprintf("Circuit opened after %d failures. Pausing for %s.", cb.failures, cb.cooldownDuration), "", "", "")
+	}
+}
+
+var breaker = newCircuitBreaker()
+
+// --- HTTP Client ---
+
+func sendCrashReport(podName string, logs string) {
+	traceID := fmt.Sprintf("%d", time.Now().UnixNano())[:8]
+
+	if !breaker.allow() {
+		logJSON("warn", "Circuit open: skipping brain request", podName, traceID, "brain unreachable")
+		return
+	}
+
 	brainURL := os.Getenv("BRAIN_URL")
 	if brainURL == "" {
-		brainURL = "http://localhost:8000/analyze" // local dev fallback
+		brainURL = "http://localhost:8000/analyze"
 	}
 
 	apiKey := os.Getenv("KUBEWHISPERER_API_KEY")
 	if apiKey == "" {
-		fmt.Println(" [X] KUBEWHISPERER_API_KEY not set. Aborting request.")
+		logJSON("error", "KUBEWHISPERER_API_KEY not set. Aborting.", podName, traceID, "missing env var")
 		return
 	}
 
 	report := CrashReport{PodName: podName, ErrorLog: logs}
 	jsonData, err := json.Marshal(report)
 	if err != nil {
-		fmt.Printf(" [X] JSON Error: %v\n", err)
+		logJSON("error", "JSON marshal error", podName, traceID, err.Error())
+		breaker.recordFailure()
 		return
 	}
 
 	req, err := http.NewRequest("POST", brainURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Printf(" [X] Request build error: %v\n", err)
+		logJSON("error", "Request build error", podName, traceID, err.Error())
+		breaker.recordFailure()
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-API-Key", apiKey) // FIX: Auth header
+	req.Header.Set("X-API-Key", apiKey)
+	req.Header.Set("X-Trace-ID", traceID)
+
+	logJSON("info", "Sending crash report to brain", podName, traceID, "")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Printf(" [X] Brain Connection Failed: %v\n", err)
+		logJSON("error", "Brain connection failed", podName, traceID, err.Error())
+		breaker.recordFailure()
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf(" [X] Error reading response: %v\n", err)
+		logJSON("error", "Error reading brain response", podName, traceID, err.Error())
+		breaker.recordFailure()
 		return
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		logJSON("error", fmt.Sprintf("Brain returned HTTP %d", resp.StatusCode), podName, traceID, string(body))
+		breaker.recordFailure()
+		return
+	}
+
+	breaker.recordSuccess()
+	logJSON("info", "Diagnosis received", podName, traceID, "")
 	fmt.Println("\n" + string(body))
 }
 
-// getLogs fetches the latest log dump for the crashed container.
+// --- Log Fetcher ---
+
 func getLogs(clientset *kubernetes.Clientset, podName string) string {
 	podLogOpts := corev1.PodLogOptions{
 		TailLines: func(i int64) *int64 { return &i }(50),
@@ -104,8 +230,10 @@ func getLogs(clientset *kubernetes.Clientset, podName string) string {
 	return buf.String()
 }
 
+// --- Main ---
+
 func main() {
-	fmt.Println(" KubeWhisperer Go-Agent: Hybrid Mode Active")
+	logJSON("info", "KubeWhisperer Go-Agent starting", "", "", "")
 
 	userHomeDir, _ := os.UserHomeDir()
 	kubeConfigPath := filepath.Join(userHomeDir, ".kube", "config")
@@ -119,7 +247,8 @@ func main() {
 		panic(err.Error())
 	}
 
-	fmt.Println("[i] Watching for CrashLoopBackOff events...")
+	logJSON("info", "Watching for CrashLoopBackOff and ImagePullBackOff events", "", "", "")
+
 	watcher, err := clientset.CoreV1().Pods("default").Watch(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
@@ -141,7 +270,7 @@ func main() {
 						continue
 					}
 
-					fmt.Printf("\n[!] CRASH DETECTED: Pod %s -> %s\n", pod.Name, reason)
+					logJSON("warn", fmt.Sprintf("Crash detected: %s", reason), pod.Name, "", "")
 
 					logs := getLogs(clientset, pod.Name)
 					sendCrashReport(pod.Name, logs)
