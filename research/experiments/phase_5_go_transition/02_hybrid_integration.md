@@ -53,18 +53,34 @@ and skips the HTTP call rather than sending an unauthenticated request.
 ---
 
 ## 3. End-to-End Verification
-1. Launched `uvicorn src.brain.server:app` (Python Brain).
-2. Set `BRAIN_URL` and `KUBEWHISPERER_API_KEY` in the Go agent's environment.
-3. Deployed `bad-student` pod.
-4. **Go agent** detected `CrashLoopBackOff`, fetched previous logs, POSTed to Python server.
-5. **Python server** authenticated the request, passed logs through RAG pipeline,
-   returned JSON diagnosis.
-6. **Go agent** printed the structured diagnosis to stdout.
 
-**Confirmed failure modes:**
-* Missing `X-API-Key` header → `HTTP 403` logged by Go agent, no crash.
-* Brain unreachable → `connection refused` logged by Go agent, no crash. Watcher continues.
+**Date verified:** 2026-03-05
 
+**Terminal 1 (Python Brain) output:**
+```
+[server] Received crash report for: bad-student
+[synapse] Retrieving relevant knowledge...
+[synapse] Retrieved context: OOMKilled means Out Of Memory. It happens when
+a container uses more RAM than allowed....
+[synapse] Consulting Gemini AI...
+[synapse] Analysis complete.
+```
+
+**Terminal 2 (Go Agent) output:**
+```
+[!] CRASH DETECTED: Pod bad-student -> CrashLoopBackOff
+[->] Sending crash report for bad-student to Neural Engine...
+{"pod":"bad-student","diagnosis":"**Root Cause:** The container running the
+application attempted to allocate more memory than its configured
+limits.memory resource, leading to an Out-Of-Memory error within the
+application itself.\n\n**Fix Command:**\n```bash\nkubectl set resources
+deployment/<your-deployment-name> -c <your-container-name>
+--limits=memory=1Gi\n```"}
+```
+
+**Result:** PASS. Full RAG cycle completed. ChromaDB retrieved the correct
+OOMKilled context chunk from Phase 2 ingestion. Gemini returned a structured
+root cause and actionable kubectl fix command.
 ---
 
 ## 4. Engineering Notes
