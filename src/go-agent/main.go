@@ -143,7 +143,7 @@ var breaker = newCircuitBreaker()
 
 // --- HTTP Client ---
 
-func sendCrashReport(podName string, logs string, t1Ms float64) {
+func sendCrashReport(podName string, logs string, crashReason string, t1Ms float64) {
 	traceID := fmt.Sprintf("%d", time.Now().UnixNano())[:8]
 
 	if !breaker.allow() {
@@ -172,9 +172,14 @@ func sendCrashReport(podName string, logs string, t1Ms float64) {
 		scenarioID = "unknown"
 	}
 
+	errorLog := logs
+	if errorLog == "" {
+		errorLog = fmt.Sprintf("No logs available. Pod %s entered %s. Container may have been terminated before producing output.", podName, crashReason)
+	}
+
 	report := CrashReport{
 		PodName:     podName,
-		ErrorLog:    logs,
+		ErrorLog:    errorLog,
 		ScenarioID:  scenarioID,
 		T1MonitorMs: t1Ms,
 		T2AnalyzeMs: t2Ms,
@@ -293,7 +298,7 @@ func main() {
 					logJSON("warn", fmt.Sprintf("Crash detected: %s", reason), pod.Name, "", "")
 
 					logs := getLogs(clientset, pod.Name)
-					sendCrashReport(pod.Name, logs, t1Ms)
+					sendCrashReport(pod.Name, logs, reason, t1Ms)
 				}
 			}
 		}
