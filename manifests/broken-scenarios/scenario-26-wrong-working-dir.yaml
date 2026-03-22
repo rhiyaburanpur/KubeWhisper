@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-26-workdir
+  labels:
+    scenario: "26"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c", "pwd; ls; exit 1"]
+    workingDir: /this/path/does/not/exist/in/image

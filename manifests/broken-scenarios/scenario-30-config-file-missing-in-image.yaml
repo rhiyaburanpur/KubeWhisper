@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-30-missing-cfg
+  labels:
+    scenario: "30"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["cat /etc/app/config.yaml || echo 'FATAL: config file not found'; exit 1"]

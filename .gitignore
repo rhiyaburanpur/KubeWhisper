@@ -4,3 +4,8 @@ __pycache__/
 .env
 db_storage/
 *.sqlite3
+
+# Runtime experiment logs (raw data, not code)
+mttr_log.jsonl
+hallucination_log.jsonl
+results.csv

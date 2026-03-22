@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-35-private-registry
+  labels:
+    scenario: "35"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: ghcr.io/nonexistent-private-org/private-image:latest

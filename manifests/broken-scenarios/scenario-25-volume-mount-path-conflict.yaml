@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-25-mount-conflict
+  labels:
+    scenario: "25"
+    category: config
+spec:
+  volumes:
+  - name: vol-a
+    emptyDir: {}
+  - name: vol-b
+    emptyDir: {}
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'ERROR: mount conflict at /data'; exit 1"]
+    volumeMounts:
+    - name: vol-a
+      mountPath: /data
+    - name: vol-b
+      mountPath: /data

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-14-node-pressure
+  labels:
+    scenario: "14"
+    category: resource
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'WARN: node memory pressure detected, pod will be evicted'; sleep 5; exit 1"]
+    resources:
+      requests:
+        memory: "8Gi"
+      limits:
+        memory: "8Gi"

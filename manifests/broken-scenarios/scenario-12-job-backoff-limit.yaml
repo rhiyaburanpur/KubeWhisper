@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: scenario-12-job
+  labels:
+    scenario: "12"
+    category: resource
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        scenario: "12"
+        category: resource
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: crasher
+        image: busybox
+        command: ["/bin/sh", "-c", "echo 'JOB FAILED: database migration error'; exit 1"]

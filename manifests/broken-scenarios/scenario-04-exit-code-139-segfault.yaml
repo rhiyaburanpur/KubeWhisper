@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-04-segfault
+  labels:
+    scenario: "04"
+    category: resource
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'SIGSEGV: segmentation fault (core dumped)'; kill -11 $$"]

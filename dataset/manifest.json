@@ -1,0 +1,452 @@
+[
+  {
+    "scenario_id": "01",
+    "name": "oom-kill-heap",
+    "category": "resource",
+    "manifest_file": "scenario-01-oom-kill-heap.yaml",
+    "expected_root_cause": "Container exceeds memory limit and is killed by the OOM killer",
+    "expected_remediation": "kubectl set resources deployment <name> --limits=memory=256Mi",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "02",
+    "name": "exit-code-1-generic",
+    "category": "resource",
+    "manifest_file": "scenario-02-exit-code-1-generic.yaml",
+    "expected_root_cause": "Application exits with code 1 indicating unhandled runtime error",
+    "expected_remediation": "kubectl logs scenario-02-exit-code-1 --previous to inspect error",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "03",
+    "name": "exit-code-137-oom",
+    "category": "resource",
+    "manifest_file": "scenario-03-exit-code-137-oom.yaml",
+    "expected_root_cause": "Process killed by signal 9 (SIGKILL) due to OOM condition, exit code 137",
+    "expected_remediation": "kubectl set resources deployment <name> --limits=memory=512Mi",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "04",
+    "name": "exit-code-139-segfault",
+    "category": "resource",
+    "manifest_file": "scenario-04-exit-code-139-segfault.yaml",
+    "expected_root_cause": "Segmentation fault (exit code 139) caused by invalid memory access",
+    "expected_remediation": "kubectl describe pod scenario-04-segfault to check resource limits and image integrity",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "05",
+    "name": "ephemeral-storage-full",
+    "category": "resource",
+    "manifest_file": "scenario-05-ephemeral-storage-full.yaml",
+    "expected_root_cause": "Container evicted because ephemeral storage usage exceeded the configured limit",
+    "expected_remediation": "kubectl set resources pod <name> --limits=ephemeral-storage=2Gi",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "06",
+    "name": "liveness-probe-fail",
+    "category": "resource",
+    "manifest_file": "scenario-06-liveness-probe-fail.yaml",
+    "expected_root_cause": "Liveness probe repeatedly fails causing kubelet to restart the container",
+    "expected_remediation": "kubectl edit pod scenario-06-liveness to fix probe path or increase failureThreshold",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "07",
+    "name": "readiness-never-ready",
+    "category": "resource",
+    "manifest_file": "scenario-07-readiness-never-ready.yaml",
+    "expected_root_cause": "Readiness probe never succeeds so pod stays in NotReady state indefinitely",
+    "expected_remediation": "kubectl edit pod scenario-07-readiness to correct probe endpoint or remove incorrect probe",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "08",
+    "name": "init-container-fail",
+    "category": "resource",
+    "manifest_file": "scenario-08-init-container-fail.yaml",
+    "expected_root_cause": "Init container exits with error preventing the main container from starting",
+    "expected_remediation": "kubectl logs scenario-08-init-fail -c init-checker --previous to debug init container",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "09",
+    "name": "cpu-limit-throttle-crash",
+    "category": "resource",
+    "manifest_file": "scenario-09-cpu-limit-throttle-crash.yaml",
+    "expected_root_cause": "Container process starved of CPU due to a very low CPU limit causing timeout and crash",
+    "expected_remediation": "kubectl set resources deployment <name> --limits=cpu=500m",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "10",
+    "name": "disk-write-permission-denied",
+    "category": "resource",
+    "manifest_file": "scenario-10-disk-write-permission-denied.yaml",
+    "expected_root_cause": "Container cannot write to mounted path due to read-only root filesystem",
+    "expected_remediation": "kubectl edit pod scenario-10-readonly to remove readOnlyRootFilesystem or add writable emptyDir volume",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "11",
+    "name": "too-many-open-files",
+    "category": "resource",
+    "manifest_file": "scenario-11-too-many-open-files.yaml",
+    "expected_root_cause": "Process hits file descriptor ulimit causing EMFILE errors and crash",
+    "expected_remediation": "kubectl edit pod scenario-11-fd-limit to increase nofile limit in securityContext",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "12",
+    "name": "job-backoff-limit",
+    "category": "resource",
+    "manifest_file": "scenario-12-job-backoff-limit.yaml",
+    "expected_root_cause": "Kubernetes Job exceeds backoffLimit due to repeated container failure",
+    "expected_remediation": "kubectl describe job scenario-12-job to inspect failure reason then fix container command",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "13",
+    "name": "oom-kill-java-heap",
+    "category": "resource",
+    "manifest_file": "scenario-13-oom-kill-java-heap.yaml",
+    "expected_root_cause": "JVM heap exhausted because container memory limit is lower than JVM heap size",
+    "expected_remediation": "kubectl set resources deployment <name> --limits=memory=1Gi or set -Xmx to below container limit",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "14",
+    "name": "pod-evicted-node-pressure",
+    "category": "resource",
+    "manifest_file": "scenario-14-pod-evicted-node-pressure.yaml",
+    "expected_root_cause": "Pod evicted by kubelet due to node memory pressure condition",
+    "expected_remediation": "kubectl describe node to check memory pressure then reschedule pod to node with sufficient resources",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "15",
+    "name": "startup-probe-timeout",
+    "category": "resource",
+    "manifest_file": "scenario-15-startup-probe-timeout.yaml",
+    "expected_root_cause": "Startup probe times out before application initialises killing the container",
+    "expected_remediation": "kubectl edit pod scenario-15-startup to increase startupProbe failureThreshold or initialDelaySeconds",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "16",
+    "name": "container-cannot-run-as-root",
+    "category": "resource",
+    "manifest_file": "scenario-16-container-cannot-run-as-root.yaml",
+    "expected_root_cause": "Container requires root but pod security policy forbids running as root user",
+    "expected_remediation": "kubectl edit pod scenario-16-noroot to add runAsNonRoot false or fix image to not require root",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "17",
+    "name": "crash-loop-exit-2",
+    "category": "resource",
+    "manifest_file": "scenario-17-crash-loop-exit-2.yaml",
+    "expected_root_cause": "Container exits with code 2 indicating misuse of shell built-in or command not found",
+    "expected_remediation": "kubectl logs scenario-17-exit-2 --previous to identify missing binary or incorrect shell syntax",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "18",
+    "name": "missing-env-var",
+    "category": "config",
+    "manifest_file": "scenario-18-missing-env-var.yaml",
+    "expected_root_cause": "Application crashes because required environment variable DATABASE_URL is not set",
+    "expected_remediation": "kubectl set env deployment <name> DATABASE_URL=<value>",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "19",
+    "name": "wrong-image-tag",
+    "category": "config",
+    "manifest_file": "scenario-19-wrong-image-tag.yaml",
+    "expected_root_cause": "Pod fails to start because the specified image tag does not exist in the registry",
+    "expected_remediation": "kubectl set image pod/scenario-19-bad-tag crasher=busybox:latest",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "20",
+    "name": "missing-secret-ref",
+    "category": "config",
+    "manifest_file": "scenario-20-missing-secret-ref.yaml",
+    "expected_root_cause": "Pod cannot start because it references a Secret that does not exist in the namespace",
+    "expected_remediation": "kubectl create secret generic app-secret --from-literal=API_KEY=<value>",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "21",
+    "name": "missing-configmap-ref",
+    "category": "config",
+    "manifest_file": "scenario-21-missing-configmap-ref.yaml",
+    "expected_root_cause": "Pod cannot start because it references a ConfigMap that does not exist",
+    "expected_remediation": "kubectl create configmap app-config --from-literal=LOG_LEVEL=info",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "22",
+    "name": "bad-command-syntax",
+    "category": "config",
+    "manifest_file": "scenario-22-bad-command-syntax.yaml",
+    "expected_root_cause": "Container entrypoint command has incorrect syntax causing immediate exit",
+    "expected_remediation": "kubectl edit pod scenario-22-bad-cmd to fix command array syntax",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "23",
+    "name": "wrong-port-in-service",
+    "category": "config",
+    "manifest_file": "scenario-23-wrong-port-in-service.yaml",
+    "expected_root_cause": "Service selector matches pod but targetPort does not match container port causing connection refused",
+    "expected_remediation": "kubectl edit service scenario-23-svc to correct targetPort to match container port",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "24",
+    "name": "invalid-env-value-type",
+    "category": "config",
+    "manifest_file": "scenario-24-invalid-env-value-type.yaml",
+    "expected_root_cause": "Application expects integer environment variable but received string causing parse failure",
+    "expected_remediation": "kubectl set env deployment <name> MAX_CONNECTIONS=100",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "25",
+    "name": "volume-mount-path-conflict",
+    "category": "config",
+    "manifest_file": "scenario-25-volume-mount-path-conflict.yaml",
+    "expected_root_cause": "Two volume mounts share the same mountPath causing filesystem conflict and crash",
+    "expected_remediation": "kubectl edit pod scenario-25-mount-conflict to assign unique mountPaths to each volume",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "26",
+    "name": "wrong-working-dir",
+    "category": "config",
+    "manifest_file": "scenario-26-wrong-working-dir.yaml",
+    "expected_root_cause": "Container workingDir does not exist in the image causing startup failure",
+    "expected_remediation": "kubectl edit pod scenario-26-workdir to set workingDir to a path that exists in the image",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "27",
+    "name": "cronjob-bad-schedule",
+    "category": "config",
+    "manifest_file": "scenario-27-cronjob-bad-schedule.yaml",
+    "expected_root_cause": "CronJob fails to schedule because the cron expression is syntactically invalid",
+    "expected_remediation": "kubectl edit cronjob scenario-27-cronjob to fix schedule to a valid cron expression",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "28",
+    "name": "image-entrypoint-not-found",
+    "category": "config",
+    "manifest_file": "scenario-28-image-entrypoint-not-found.yaml",
+    "expected_root_cause": "Container entrypoint binary does not exist in the specified image",
+    "expected_remediation": "kubectl edit pod scenario-28-no-entrypoint to correct command to a binary that exists in the image",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "29",
+    "name": "deployment-wrong-selector",
+    "category": "config",
+    "manifest_file": "scenario-29-deployment-wrong-selector.yaml",
+    "expected_root_cause": "Deployment selector does not match pod template labels so no pods are managed",
+    "expected_remediation": "kubectl edit deployment scenario-29-bad-selector to align selector.matchLabels with template.metadata.labels",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "30",
+    "name": "config-file-missing-in-image",
+    "category": "config",
+    "manifest_file": "scenario-30-config-file-missing-in-image.yaml",
+    "expected_root_cause": "Application expects a config file at a hardcoded path that does not exist in the image",
+    "expected_remediation": "kubectl edit pod scenario-30-missing-cfg to mount a ConfigMap providing the missing config file",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "31",
+    "name": "replica-count-zero",
+    "category": "config",
+    "manifest_file": "scenario-31-replica-count-zero.yaml",
+    "expected_root_cause": "Deployment has replicas set to 0 so no pods are scheduled",
+    "expected_remediation": "kubectl scale deployment scenario-31-zero-replicas --replicas=1",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "32",
+    "name": "env-var-empty-string",
+    "category": "config",
+    "manifest_file": "scenario-32-env-var-empty-string.yaml",
+    "expected_root_cause": "Required environment variable is set but empty causing application validation failure",
+    "expected_remediation": "kubectl set env deployment <name> REQUIRED_TOKEN=<non-empty-value>",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "33",
+    "name": "wrong-image-repo",
+    "category": "config",
+    "manifest_file": "scenario-33-wrong-image-repo.yaml",
+    "expected_root_cause": "Image pull fails because the repository name is misspelled and does not exist",
+    "expected_remediation": "kubectl set image pod/scenario-33-bad-repo crasher=busybox:latest",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "34",
+    "name": "resource-request-exceeds-node",
+    "category": "config",
+    "manifest_file": "scenario-34-resource-request-exceeds-node.yaml",
+    "expected_root_cause": "Pod cannot be scheduled because resource request exceeds available capacity on any node",
+    "expected_remediation": "kubectl edit pod scenario-34-unschedulable to reduce resource requests to fit available node capacity",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "35",
+    "name": "imagepullbackoff-private-registry",
+    "category": "network",
+    "manifest_file": "scenario-35-imagepullbackoff-private-registry.yaml",
+    "expected_root_cause": "Image pull fails because registry requires authentication and no imagePullSecret is configured",
+    "expected_remediation": "kubectl create secret docker-registry regcred --docker-server=<registry> --docker-username=<user> --docker-password=<pass> then add imagePullSecrets to pod spec",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "36",
+    "name": "service-account-missing",
+    "category": "network",
+    "manifest_file": "scenario-36-service-account-missing.yaml",
+    "expected_root_cause": "Pod references a ServiceAccount that does not exist in the namespace",
+    "expected_remediation": "kubectl create serviceaccount app-sa",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "37",
+    "name": "rbac-forbidden-api-call",
+    "category": "network",
+    "manifest_file": "scenario-37-rbac-forbidden-api-call.yaml",
+    "expected_root_cause": "Application receives HTTP 403 Forbidden from Kubernetes API because ServiceAccount lacks required RBAC permissions",
+    "expected_remediation": "kubectl create clusterrolebinding app-binding --clusterrole=view --serviceaccount=default:default",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "38",
+    "name": "dns-resolution-failure",
+    "category": "network",
+    "manifest_file": "scenario-38-dns-resolution-failure.yaml",
+    "expected_root_cause": "Application cannot resolve internal service DNS name indicating CoreDNS issue or incorrect service name",
+    "expected_remediation": "kubectl get svc to verify service exists then check CoreDNS with kubectl logs -n kube-system -l k8s-app=kube-dns",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "39",
+    "name": "network-policy-blocks-egress",
+    "category": "network",
+    "manifest_file": "scenario-39-network-policy-blocks-egress.yaml",
+    "expected_root_cause": "NetworkPolicy blocks egress traffic causing application to fail when connecting to external service",
+    "expected_remediation": "kubectl edit networkpolicy to add egress rule allowing traffic to required destination",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "40",
+    "name": "clusterip-no-endpoints",
+    "category": "network",
+    "manifest_file": "scenario-40-clusterip-no-endpoints.yaml",
+    "expected_root_cause": "Service has no endpoints because no pods match its selector causing connection refused",
+    "expected_remediation": "kubectl get endpoints scenario-40-svc to confirm empty endpoints then fix service selector to match running pods",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "41",
+    "name": "imagepullbackoff-rate-limit",
+    "category": "network",
+    "manifest_file": "scenario-41-imagepullbackoff-rate-limit.yaml",
+    "expected_root_cause": "Docker Hub pull rate limit exceeded causing ImagePullBackOff",
+    "expected_remediation": "kubectl create secret docker-registry dockerhub-creds to authenticate and bypass rate limit",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "42",
+    "name": "tls-cert-verify-fail",
+    "category": "network",
+    "manifest_file": "scenario-42-tls-cert-verify-fail.yaml",
+    "expected_root_cause": "Application TLS handshake fails because server certificate is self-signed or expired",
+    "expected_remediation": "kubectl create secret tls app-tls --cert=cert.pem --key=key.pem and mount it into the pod",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "43",
+    "name": "service-port-mismatch",
+    "category": "network",
+    "manifest_file": "scenario-43-service-port-mismatch.yaml",
+    "expected_root_cause": "Service port does not match the port the container is actually listening on",
+    "expected_remediation": "kubectl edit service scenario-43-svc to set targetPort to match the container listening port",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "44",
+    "name": "pod-to-pod-network-unreachable",
+    "category": "network",
+    "manifest_file": "scenario-44-pod-to-pod-network-unreachable.yaml",
+    "expected_root_cause": "Pod cannot reach another pod due to CNI plugin misconfiguration",
+    "expected_remediation": "kubectl describe node to check CNI plugin status and restart CNI daemonset if needed",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "45",
+    "name": "ingress-backend-not-found",
+    "category": "network",
+    "manifest_file": "scenario-45-ingress-backend-not-found.yaml",
+    "expected_root_cause": "Ingress resource references a backend Service that does not exist",
+    "expected_remediation": "kubectl get svc to verify backend service exists and create it if missing",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "46",
+    "name": "rbac-missing-clusterrole",
+    "category": "network",
+    "manifest_file": "scenario-46-rbac-missing-clusterrole.yaml",
+    "expected_root_cause": "ClusterRoleBinding references a ClusterRole that does not exist causing authorization failure",
+    "expected_remediation": "kubectl create clusterrole app-role --verb=get,list,watch --resource=pods",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "47",
+    "name": "external-service-timeout",
+    "category": "network",
+    "manifest_file": "scenario-47-external-service-timeout.yaml",
+    "expected_root_cause": "Application times out connecting to external database because no egress is allowed from the cluster",
+    "expected_remediation": "kubectl edit networkpolicy to add egress rule for the external database IP and port",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "48",
+    "name": "imagepullbackoff-wrong-pullsecret",
+    "category": "network",
+    "manifest_file": "scenario-48-imagepullbackoff-wrong-pullsecret.yaml",
+    "expected_root_cause": "ImagePullBackOff because imagePullSecret exists but contains wrong credentials",
+    "expected_remediation": "kubectl delete secret regcred && kubectl create secret docker-registry regcred with correct credentials",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "49",
+    "name": "coredns-pod-not-found",
+    "category": "network",
+    "manifest_file": "scenario-49-coredns-pod-not-found.yaml",
+    "expected_root_cause": "CoreDNS pods are not running causing all in-cluster DNS resolution to fail",
+    "expected_remediation": "kubectl rollout restart deployment coredns -n kube-system",
+    "watchdog_resolves": false
+  },
+  {
+    "scenario_id": "50",
+    "name": "node-not-ready-pod-pending",
+    "category": "network",
+    "manifest_file": "scenario-50-node-not-ready-pod-pending.yaml",
+    "expected_root_cause": "Pod stuck in Pending state because all nodes are in NotReady status",
+    "expected_remediation": "kubectl describe node to find taint or condition then kubectl drain and uncordon to restore scheduling",
+    "watchdog_resolves": false
+  }
+]

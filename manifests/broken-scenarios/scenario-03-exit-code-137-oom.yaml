@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-03-exit-137
+  labels:
+    scenario: "03"
+    category: resource
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'FATAL: OOMKilled signal 9'; kill -9 $$"]
+    resources:
+      limits:
+        memory: "16Mi"

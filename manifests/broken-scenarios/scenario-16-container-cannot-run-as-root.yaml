@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-16-noroot
+  labels:
+    scenario: "16"
+    category: resource
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 0
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c", "sleep 3600"]

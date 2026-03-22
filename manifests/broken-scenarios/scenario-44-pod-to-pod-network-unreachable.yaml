@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-44-cni-fail
+  labels:
+    scenario: "44"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'FATAL: dial tcp 10.244.0.5:5432: connect: no route to host'; exit 1"]

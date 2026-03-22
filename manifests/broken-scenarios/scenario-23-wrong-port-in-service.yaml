@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-23-wrong-port
+  labels:
+    scenario: "23"
+    category: config
+    app: scenario-23
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'ERROR: connection refused on port 9999: no listener'; exit 1"]
+    ports:
+    - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scenario-23-svc
+spec:
+  selector:
+    app: scenario-23
+  ports:
+  - port: 80
+    targetPort: 9999

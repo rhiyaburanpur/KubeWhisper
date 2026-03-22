@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-05-ephemeral-storage
+  labels:
+    scenario: "05"
+    category: resource
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["dd if=/dev/zero of=/tmp/bigfile bs=1M count=500; sleep 5; exit 1"]
+    resources:
+      limits:
+        ephemeral-storage: "50Mi"

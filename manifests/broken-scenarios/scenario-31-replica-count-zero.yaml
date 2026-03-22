@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scenario-31-zero-replicas
+  labels:
+    scenario: "31"
+    category: config
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: scenario-31
+  template:
+    metadata:
+      labels:
+        app: scenario-31
+    spec:
+      containers:
+      - name: app
+        image: busybox
+        command: ["/bin/sh", "-c", "sleep 3600"]

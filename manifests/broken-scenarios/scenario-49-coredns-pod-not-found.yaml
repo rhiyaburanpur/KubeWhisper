@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-49-coredns-down
+  labels:
+    scenario: "49"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["nslookup kubernetes.default.svc.cluster.local 2>&1; echo 'FATAL: no DNS response from CoreDNS'; exit 1"]

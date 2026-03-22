@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-32-empty-env
+  labels:
+    scenario: "32"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'FATAL: REQUIRED_TOKEN must not be empty'; exit 1"]
+    env:
+    - name: REQUIRED_TOKEN
+      value: ""

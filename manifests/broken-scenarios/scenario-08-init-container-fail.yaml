@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-08-init-fail
+  labels:
+    scenario: "08"
+    category: resource
+spec:
+  initContainers:
+  - name: init-checker
+    image: busybox
+    command: ["/bin/sh", "-c", "echo 'FATAL: dependency check failed'; exit 1"]
+  containers:
+  - name: main
+    image: busybox
+    command: ["/bin/sh", "-c", "sleep 3600"]
