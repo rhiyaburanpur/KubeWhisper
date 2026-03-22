@@ -20,7 +20,7 @@ class MTTRRecord:
 
 
 def now_ms() -> float:
-    return time.monotonic() * 1000
+    return time.time() * 1000
 
 
 def write_mttr_record(record: MTTRRecord, log_path: str = "mttr_log.jsonl") -> None:
