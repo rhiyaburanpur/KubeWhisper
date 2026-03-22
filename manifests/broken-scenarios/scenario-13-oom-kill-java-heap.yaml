@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-13-jvm-heap
+  labels:
+    scenario: "13"
+    category: resource
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'Exception in thread main java.lang.OutOfMemoryError: Java heap space'; exit 1"]
+    resources:
+      limits:
+        memory: "64Mi"

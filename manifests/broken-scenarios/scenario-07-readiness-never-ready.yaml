@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-07-readiness
+  labels:
+    scenario: "07"
+    category: resource
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c", "sleep 3600"]
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 9999
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 3

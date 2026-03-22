@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-28-no-entrypoint
+  labels:
+    scenario: "28"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/usr/bin/nonexistent-binary"]
+    args: ["--start"]

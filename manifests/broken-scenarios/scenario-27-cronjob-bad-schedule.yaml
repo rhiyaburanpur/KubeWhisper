@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scenario-27-cronjob
+  labels:
+    scenario: "27"
+    category: config
+spec:
+  schedule: "not-a-valid-cron-expression"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            scenario: "27"
+            category: config
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: crasher
+            image: busybox
+            command: ["/bin/sh", "-c", "echo hello"]

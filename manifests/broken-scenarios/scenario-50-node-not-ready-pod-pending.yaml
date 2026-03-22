@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-50-node-not-ready
+  labels:
+    scenario: "50"
+    category: network
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: nonexistent-node-name
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c", "sleep 3600"]

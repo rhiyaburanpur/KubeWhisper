@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-38-dns-fail
+  labels:
+    scenario: "38"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["nslookup nonexistent-service.default.svc.cluster.local; echo 'FATAL: DNS resolution failed'; exit 1"]

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-19-bad-tag
+  labels:
+    scenario: "19"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox:this-tag-does-not-exist-404

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-47-ext-timeout
+  labels:
+    scenario: "47"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'FATAL: dial tcp 203.0.113.1:5432: i/o timeout after 30s'; exit 1"]

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-42-tls-fail
+  labels:
+    scenario: "42"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'FATAL: x509: certificate signed by unknown authority'; exit 1"]

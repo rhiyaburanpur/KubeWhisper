@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-10-readonly
+  labels:
+    scenario: "10"
+    category: resource
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'attempting write'; echo 'data' > /tmp/test.txt || exit 1"]
+    securityContext:
+      readOnlyRootFilesystem: true

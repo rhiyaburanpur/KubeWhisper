@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scenario-39-block-egress
+  labels:
+    scenario: "39"
+    category: network
+spec:
+  podSelector:
+    matchLabels:
+      scenario: "39"
+  policyTypes:
+  - Egress
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-39-network-policy
+  labels:
+    scenario: "39"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["wget -T 5 http://google.com || echo 'FATAL: egress blocked by NetworkPolicy'; exit 1"]

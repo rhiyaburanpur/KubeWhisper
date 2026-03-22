@@ -12,12 +12,14 @@ from fastapi.responses import Response
 from fastapi.security.api_key import APIKeyHeader
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel
+from typing import Optional
 
 from src.brain.metrics import (
     DIAGNOSIS_REQUESTS_TOTAL,
     DIAGNOSIS_DURATION_SECONDS,
     RAG_CONTEXT_HITS_TOTAL,
 )
+from src.brain.mttr import MTTRRecord, now_ms, write_mttr_record
 from src.brain.synapse import Synapse
 import uvicorn
 
@@ -47,6 +49,9 @@ def verify_api_key(api_key: str = Security(api_key_header)):
 class CrashReport(BaseModel):
     pod_name: str
     error_log: str
+    scenario_id: Optional[str] = "unknown"
+    t1_monitor_ms: Optional[float] = None
+    t2_analyze_ms: Optional[float] = None
 
 
 app = FastAPI(title="KubeWhisperer Neural Engine")
@@ -73,9 +78,15 @@ def analyze_crash(
     api_key: str = Security(verify_api_key),
 ):
     trace_id = str(uuid.uuid4())[:8]
-    start = time.monotonic()
+    t3_plan_ms = now_ms()
 
-    log("info", "Crash report received", trace_id=trace_id, pod=report.pod_name)
+    log("info", "Crash report received",
+        trace_id=trace_id,
+        pod=report.pod_name,
+        scenario_id=report.scenario_id,
+        t1_monitor_ms=report.t1_monitor_ms,
+        t2_analyze_ms=report.t2_analyze_ms,
+    )
 
     if not report.error_log:
         DIAGNOSIS_REQUESTS_TOTAL.labels(status="error").inc()
@@ -83,27 +94,61 @@ def analyze_crash(
 
     try:
         diagnosis, rag_hit = brain.reason(report.error_log)
+        t4_execute_ms = now_ms()
 
-        duration = time.monotonic() - start
-        DIAGNOSIS_DURATION_SECONDS.observe(duration)
+        duration_s = (t4_execute_ms - t3_plan_ms) / 1000
+        DIAGNOSIS_DURATION_SECONDS.observe(duration_s)
         DIAGNOSIS_REQUESTS_TOTAL.labels(status="success").inc()
         RAG_CONTEXT_HITS_TOTAL.labels(hit=str(rag_hit).lower()).inc()
 
-        log(
-            "info",
-            "Diagnosis complete",
+        mttr_ms = None
+        if report.t1_monitor_ms is not None:
+            mttr_ms = t4_execute_ms - report.t1_monitor_ms
+
+        mttr_record = MTTRRecord(
+            trace_id=trace_id,
+            scenario_id=report.scenario_id,
+            pod_name=report.pod_name,
+            t1_monitor_ms=report.t1_monitor_ms or 0.0,
+            t2_analyze_ms=report.t2_analyze_ms or 0.0,
+            t3_plan_ms=t3_plan_ms,
+            t4_execute_ms=t4_execute_ms,
+            mttr_ms=mttr_ms or (t4_execute_ms - t3_plan_ms),
+            rag_hit=rag_hit,
+            success=True,
+        )
+        write_mttr_record(mttr_record)
+
+        log("info", "Diagnosis complete",
             trace_id=trace_id,
             pod=report.pod_name,
-            duration_seconds=round(duration, 3),
+            scenario_id=report.scenario_id,
+            duration_seconds=round(duration_s, 3),
+            mttr_ms=round(mttr_ms, 2) if mttr_ms else None,
             rag_hit=rag_hit,
         )
 
-        return {"pod": report.pod_name, "diagnosis": diagnosis, "trace_id": trace_id}
+        return {
+            "pod": report.pod_name,
+            "diagnosis": diagnosis,
+            "trace_id": trace_id,
+            "scenario_id": report.scenario_id,
+            "timestamps": {
+                "t1_monitor_ms": report.t1_monitor_ms,
+                "t2_analyze_ms": report.t2_analyze_ms,
+                "t3_plan_ms": t3_plan_ms,
+                "t4_execute_ms": t4_execute_ms,
+                "mttr_ms": mttr_ms,
+            }
+        }
 
     except Exception as e:
-        duration = time.monotonic() - start
         DIAGNOSIS_REQUESTS_TOTAL.labels(status="error").inc()
-        log("error", "Diagnosis failed", trace_id=trace_id, pod=report.pod_name, error=str(e))
+        log("error", "Diagnosis failed",
+            trace_id=trace_id,
+            pod=report.pod_name,
+            error=str(e),
+        )
         raise HTTPException(status_code=500, detail="Diagnosis failed.")
 
 

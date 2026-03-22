@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scenario-29-bad-selector
+  labels:
+    scenario: "29"
+    category: config
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scenario-29-correct
+  template:
+    metadata:
+      labels:
+        app: scenario-29-wrong
+    spec:
+      containers:
+      - name: crasher
+        image: busybox
+        command: ["/bin/sh", "-c", "exit 1"]

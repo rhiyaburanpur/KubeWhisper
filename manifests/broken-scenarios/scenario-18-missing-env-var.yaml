@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-18-missing-env
+  labels:
+    scenario: "18"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'FATAL: DATABASE_URL environment variable is not set'; exit 1"]

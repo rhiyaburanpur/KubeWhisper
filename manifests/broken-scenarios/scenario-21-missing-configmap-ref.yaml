@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-21-missing-configmap
+  labels:
+    scenario: "21"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c", "sleep 3600"]
+    envFrom:
+    - configMapRef:
+        name: app-config-does-not-exist

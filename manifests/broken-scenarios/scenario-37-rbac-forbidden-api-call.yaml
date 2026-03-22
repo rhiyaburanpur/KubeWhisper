@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-37-rbac-forbidden
+  labels:
+    scenario: "37"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'FATAL: pods is forbidden: User system:serviceaccount:default:default cannot list resource pods in API group core'; exit 1"]

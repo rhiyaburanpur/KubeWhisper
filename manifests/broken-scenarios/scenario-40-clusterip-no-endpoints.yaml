@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: scenario-40-svc
+  labels:
+    scenario: "40"
+    category: network
+spec:
+  selector:
+    app: scenario-40-nonexistent
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-40-no-endpoints
+  labels:
+    scenario: "40"
+    category: network
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["wget -T 5 http://scenario-40-svc || echo 'FATAL: connection refused, no endpoints'; exit 1"]

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-34-unschedulable
+  labels:
+    scenario: "34"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c", "sleep 3600"]
+    resources:
+      requests:
+        memory: "999Ti"
+        cpu: "999"

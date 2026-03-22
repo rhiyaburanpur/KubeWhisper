@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-09-cpu-limit
+  labels:
+    scenario: "09"
+    category: resource
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'WARN: CPU throttled, operation timed out'; sleep 5; exit 1"]
+    resources:
+      limits:
+        cpu: "1m"

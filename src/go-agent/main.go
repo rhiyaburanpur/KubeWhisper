@@ -19,12 +19,16 @@ import (
 )
 
 // CrashReport matches the Pydantic model in the Python Brain API.
+// T1MonitorMs and T2AnalyzeMs are the MAPE-K stage timestamps captured
+// by the agent before the request is sent.
 type CrashReport struct {
-	PodName  string `json:"pod_name"`
-	ErrorLog string `json:"error_log"`
+	PodName     string  `json:"pod_name"`
+	ErrorLog    string  `json:"error_log"`
+	ScenarioID  string  `json:"scenario_id"`
+	T1MonitorMs float64 `json:"t1_monitor_ms"`
+	T2AnalyzeMs float64 `json:"t2_analyze_ms"`
 }
 
-// logEntry is the structure for every JSON log line emitted by the agent.
 type logEntry struct {
 	Level   string `json:"level"`
 	Service string `json:"service"`
@@ -45,6 +49,10 @@ func logJSON(level, msg, pod, traceID, errStr string) {
 	}
 	line, _ := json.Marshal(entry)
 	fmt.Println(string(line))
+}
+
+func nowMs() float64 {
+	return float64(time.Now().UnixNano()) / 1e6
 }
 
 // --- Deduplication Cache ---
@@ -68,11 +76,6 @@ func shouldDiagnose(podName string) bool {
 }
 
 // --- Circuit Breaker ---
-//
-// States:
-//   closed   — normal operation, requests pass through
-//   open     — brain is down, requests are blocked for cooldownDuration
-//   half-open — one probe request is allowed to test if brain recovered
 
 type circuitState int
 
@@ -99,7 +102,6 @@ func newCircuitBreaker() *circuitBreaker {
 	}
 }
 
-// allow returns true if the request should be sent to the brain.
 func (cb *circuitBreaker) allow() bool {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -119,7 +121,6 @@ func (cb *circuitBreaker) allow() bool {
 	return false
 }
 
-// recordSuccess resets the breaker to closed.
 func (cb *circuitBreaker) recordSuccess() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -127,7 +128,6 @@ func (cb *circuitBreaker) recordSuccess() {
 	cb.failures = 0
 }
 
-// recordFailure increments the failure counter and opens the circuit if the threshold is reached.
 func (cb *circuitBreaker) recordFailure() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -143,7 +143,7 @@ var breaker = newCircuitBreaker()
 
 // --- HTTP Client ---
 
-func sendCrashReport(podName string, logs string) {
+func sendCrashReport(podName string, logs string, t1Ms float64) {
 	traceID := fmt.Sprintf("%d", time.Now().UnixNano())[:8]
 
 	if !breaker.allow() {
@@ -162,7 +162,24 @@ func sendCrashReport(podName string, logs string) {
 		return
 	}
 
-	report := CrashReport{PodName: podName, ErrorLog: logs}
+	// T2: logs fetched, about to send to brain
+	t2Ms := nowMs()
+
+	// scenario_id is read from the pod label "scenario" if present.
+	// For non-benchmark pods this will be "unknown".
+	scenarioID := os.Getenv("SCENARIO_ID")
+	if scenarioID == "" {
+		scenarioID = "unknown"
+	}
+
+	report := CrashReport{
+		PodName:     podName,
+		ErrorLog:    logs,
+		ScenarioID:  scenarioID,
+		T1MonitorMs: t1Ms,
+		T2AnalyzeMs: t2Ms,
+	}
+
 	jsonData, err := json.Marshal(report)
 	if err != nil {
 		logJSON("error", "JSON marshal error", podName, traceID, err.Error())
@@ -270,10 +287,13 @@ func main() {
 						continue
 					}
 
+					// T1: crash event detected
+					t1Ms := nowMs()
+
 					logJSON("warn", fmt.Sprintf("Crash detected: %s", reason), pod.Name, "", "")
 
 					logs := getLogs(clientset, pod.Name)
-					sendCrashReport(pod.Name, logs)
+					sendCrashReport(pod.Name, logs, t1Ms)
 				}
 			}
 		}

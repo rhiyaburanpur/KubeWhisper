@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scenario-24-bad-env-type
+  labels:
+    scenario: "24"
+    category: config
+spec:
+  containers:
+  - name: crasher
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args: ["echo 'FATAL: ValueError: invalid literal for int() with base 10: not-a-number'; exit 1"]
+    env:
+    - name: MAX_CONNECTIONS
+      value: "not-a-number"
