@@ -9,7 +9,7 @@
 ## 7.1 Objective
 
 Phase 7 introduces three production-grade observability and resilience features to the
-KubeWhisperer system:
+KUBEWHISPER system:
 
 1. **Prometheus metrics** — structured counters and histograms exposed at `GET /metrics`
 2. **Structured JSON logging with trace IDs** — machine-readable log lines correlated across
@@ -31,10 +31,10 @@ Defines all Prometheus metric objects in a single module:
 
 | Metric | Type | Description |
 |---|---|---|
-| `kubewhisperer_diagnosis_requests_total` | Counter | Total requests, labelled by `status` (`success` / `error`) |
-| `kubewhisperer_diagnosis_duration_seconds` | Histogram | End-to-end diagnosis latency in seconds |
-| `kubewhisperer_rag_context_hits_total` | Counter | RAG retrieval hit/miss count, labelled by `hit` (`true` / `false`) |
-| `kubewhisperer_build_info` | Info | Static build metadata (version, model, embedding model) |
+| `KUBEWHISPER_diagnosis_requests_total` | Counter | Total requests, labelled by `status` (`success` / `error`) |
+| `KUBEWHISPER_diagnosis_duration_seconds` | Histogram | End-to-end diagnosis latency in seconds |
+| `KUBEWHISPER_rag_context_hits_total` | Counter | RAG retrieval hit/miss count, labelled by `hit` (`true` / `false`) |
+| `KUBEWHISPER_build_info` | Info | Static build metadata (version, model, embedding model) |
 
 The histogram uses custom buckets (`0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0` seconds)
 chosen to bracket the expected range of Gemini API response times under normal and rate-limited
@@ -88,7 +88,7 @@ System verified end-to-end on Kind cluster (`kubewhisper-lab`) with pod `bad-stu
 
 ### Go Agent startup (JSON logging confirmed)
 ```
-{"level":"info","service":"go-agent","msg":"KubeWhisperer Go-Agent starting"}
+{"level":"info","service":"go-agent","msg":"KUBEWHISPER Go-Agent starting"}
 {"level":"info","service":"go-agent","msg":"Watching for CrashLoopBackOff and ImagePullBackOff events"}
 ```
 
@@ -106,13 +106,13 @@ request correlation.
 
 ### Metrics endpoint sample (after one successful diagnosis)
 ```
-kubewhisperer_build_info{embedding_model="all-MiniLM-L6-v2",model="gemini-2.5-flash",version="0.7.0"} 1.0
-kubewhisperer_diagnosis_requests_total{status="success"} 1.0
-kubewhisperer_diagnosis_requests_total{status="error"} 0.0
-kubewhisperer_diagnosis_duration_seconds_bucket{le="10.0"} 1.0
-kubewhisperer_diagnosis_duration_seconds_sum 9.882
-kubewhisperer_rag_context_hits_total{hit="true"} 1.0
-kubewhisperer_rag_context_hits_total{hit="false"} 0.0
+KUBEWHISPER_build_info{embedding_model="all-MiniLM-L6-v2",model="gemini-2.5-flash",version="0.7.0"} 1.0
+KUBEWHISPER_diagnosis_requests_total{status="success"} 1.0
+KUBEWHISPER_diagnosis_requests_total{status="error"} 0.0
+KUBEWHISPER_diagnosis_duration_seconds_bucket{le="10.0"} 1.0
+KUBEWHISPER_diagnosis_duration_seconds_sum 9.882
+KUBEWHISPER_rag_context_hits_total{hit="true"} 1.0
+KUBEWHISPER_rag_context_hits_total{hit="false"} 0.0
 ```
 
 ### Observed latency
@@ -127,11 +127,11 @@ Phase 8 to produce statistically valid MTTR measurements across the full 50-scen
 
 This phase directly enables the paper's quantitative evaluation methodology:
 
-- `kubewhisperer_diagnosis_duration_seconds` provides the raw latency data for the MTTR
+- `KUBEWHISPER_diagnosis_duration_seconds` provides the raw latency data for the MTTR
   comparison table in the Results section
-- `kubewhisperer_rag_context_hits_total` provides the RAG retrieval rate, which will be
+- `KUBEWHISPER_rag_context_hits_total` provides the RAG retrieval rate, which will be
   reported alongside accuracy to characterise knowledge base coverage
-- `kubewhisperer_diagnosis_requests_total{status="error"}` feeds into the hallucination
+- `KUBEWHISPER_diagnosis_requests_total{status="error"}` feeds into the hallucination
   rate calculation once the Pydantic schema validator is introduced in Phase 9
 - The `trace_id` correlation mechanism enables per-incident audit trails, which are required
   for the Gold Standard dataset annotation process in Phase 8

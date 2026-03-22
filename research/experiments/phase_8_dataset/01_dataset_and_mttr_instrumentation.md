@@ -39,7 +39,7 @@ mode is deterministic — the pod will always crash in the same way on any Kind 
 **Watchdog coverage:** All 50 scenarios have `watchdog_resolves: false` in `manifest.json`.
 This means a naive restart loop (Baseline B in Phase 10) will not fix the problem — the
 container will crash again on every restart. This is critical: it establishes that
-KubeWhisperer adds value beyond what a basic liveness probe provides.
+KUBEWHISPER adds value beyond what a basic liveness probe provides.
 
 **Failure diversity:** The dataset includes failures that span both the container lifecycle
 (OOMKilled, segfault, init container failure) and the cluster control plane (missing
@@ -154,7 +154,7 @@ diagnosis appends one line to `mttr_log.jsonl`. The log path is configurable via
 
 This phase directly populates the data that appears in the paper's Results section:
 
-- `mttr_ms` per scenario → MTTR comparison table (KubeWhisperer vs Baseline A vs Baseline B)
+- `mttr_ms` per scenario → MTTR comparison table (KUBEWHISPER vs Baseline A vs Baseline B)
 - `rag_hit` per scenario → RAG retrieval rate by failure category
 - `t4_ms - t3_ms` → Brain-only latency, isolating Gemini API contribution to MTTR
 - `scenario_id` → Joins `mttr_log.jsonl` to `dataset/manifest.json` for per-category analysis

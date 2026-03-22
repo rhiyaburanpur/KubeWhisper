@@ -20,4 +20,4 @@
 * Kubernetes successfully detected the crash (State change).
 * Kubernetes successfully attempted a restart (Loop).
 * **CRITICAL GAP:** Kubernetes did NOT analyze *why* it crashed. It only blindly restarted it.
-* **Hypothesis:** An external observer (KubeWhisperer) is required to intercept the `Error` state and extract logs before the restart loop obscures the root cause.
+* **Hypothesis:** An external observer (KUBEWHISPER) is required to intercept the `Error` state and extract logs before the restart loop obscures the root cause.

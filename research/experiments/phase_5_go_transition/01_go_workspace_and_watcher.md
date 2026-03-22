@@ -23,7 +23,7 @@ as a DaemonSet (one instance per node), this overhead is unacceptable at scale.
 **Step 1: Go Module Initialization**
 ```bash
 cd src/go-agent
-go mod init kubewhisperer-agent
+go mod init KUBEWHISPER-agent
 go get k8s.io/client-go@latest
 go get k8s.io/apimachinery@latest
 ```

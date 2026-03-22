@@ -32,7 +32,7 @@ Body: { "pod_name": "...", "error_log": "..." }
 ```
 
 **Auth mechanism:** `APIKeyHeader` middleware from `fastapi.security`. The expected key
-is read from the `KUBEWHISPERER_API_KEY` environment variable at startup. A missing or
+is read from the `KUBEWHISPER_API_KEY` environment variable at startup. A missing or
 mismatched key returns `HTTP 403 Forbidden`. A missing env var raises a `RuntimeError`
 at startup, preventing a silently unauthenticated deployment.
 
@@ -45,9 +45,9 @@ Two environment variables control the HTTP call:
 | Variable | Purpose | Local Default |
 |---|---|---|
 | `BRAIN_URL` | Full URL to the `/analyze` endpoint | `http://localhost:8000/analyze` |
-| `KUBEWHISPERER_API_KEY` | Shared secret for `X-API-Key` header | *(no default — startup fails fast)* |
+| `KUBEWHISPER_API_KEY` | Shared secret for `X-API-Key` header | *(no default — startup fails fast)* |
 
-**Fail-fast behavior:** If `KUBEWHISPERER_API_KEY` is unset, the Go agent logs an error
+**Fail-fast behavior:** If `KUBEWHISPER_API_KEY` is unset, the Go agent logs an error
 and skips the HTTP call rather than sending an unauthenticated request.
 
 ---
@@ -85,9 +85,9 @@ root cause and actionable kubectl fix command.
 
 ## 4. Engineering Notes
 * **In-cluster DNS:** In production, `BRAIN_URL` will be set to
-  `http://kubewhisperer-brain.default.svc.cluster.local:8000/analyze`, leveraging
+  `http://KUBEWHISPER-brain.default.svc.cluster.local:8000/analyze`, leveraging
   Kubernetes internal service discovery — no external networking required.
-* **Secret management:** Both processes share `KUBEWHISPERER_API_KEY`. In production
+* **Secret management:** Both processes share `KUBEWHISPER_API_KEY`. In production
   this will be provisioned as a Kubernetes `Secret` and mounted as an env var in both
   the DaemonSet (Go) and the Deployment (Python) manifests.
 * **No mutual TLS required** at this stage: cluster-internal traffic is protected by

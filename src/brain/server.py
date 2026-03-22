@@ -24,7 +24,7 @@ from src.brain.synapse import Synapse
 import uvicorn
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
-logger = logging.getLogger("kubewhisperer.brain")
+logger = logging.getLogger("KUBEWHISPER.brain")
 
 
 def log(level: str, msg: str, **kwargs):
@@ -33,9 +33,9 @@ def log(level: str, msg: str, **kwargs):
     logger.info(json.dumps(record))
 
 
-API_KEY = os.getenv("KUBEWHISPERER_API_KEY")
+API_KEY = os.getenv("KUBEWHISPER_API_KEY")
 if not API_KEY:
-    raise RuntimeError("CRITICAL: KUBEWHISPERER_API_KEY environment variable not set.")
+    raise RuntimeError("CRITICAL: KUBEWHISPER_API_KEY environment variable not set.")
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -54,7 +54,7 @@ class CrashReport(BaseModel):
     t2_analyze_ms: Optional[float] = None
 
 
-app = FastAPI(title="KubeWhisperer Neural Engine")
+app = FastAPI(title="KUBEWHISPER Neural Engine")
 
 log("info", "Loading Synapse model...")
 brain = Synapse()

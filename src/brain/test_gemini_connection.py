@@ -42,7 +42,7 @@ def test_connection():
                 pro_models.append(model_name)
         
         print("\n" + "=" * 50)
-        print("RECOMMENDED FOR KUBEWHISPERER:")
+        print("RECOMMENDED FOR KUBEWHISPER:")
         print("=" * 50)
         
         if flash_models:
@@ -67,7 +67,7 @@ def test_connection():
         
         response = client.models.generate_content(
             model=test_model,
-            contents="Say 'KubeWhisperer is online!' in exactly 5 words."
+            contents="Say 'KUBEWHISPER is online!' in exactly 5 words."
         )
         
         print(f"\nResponse received:")

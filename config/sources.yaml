@@ -1,4 +1,4 @@
-# KubeWhisperer Knowledge Sources
+# KUBEWHISPER Knowledge Sources
 # Add any URL the librarian should scrape and embed into ChromaDB.
 # 'type' is stored as metadata on each chunk for source attribution.
 #

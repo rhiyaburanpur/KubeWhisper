@@ -8,7 +8,7 @@ Traditional monitoring tools like Prometheus and Grafana excel at detecting *sym
 * **Evidence:** In our baseline study (Experiment 01), we observed that the manual workflow requires an operator to execute multiple commands (`kubectl get`, `kubectl logs`), resulting in a diagnosis latency of over 60 seconds.
 
 ## 1.3 The Proposed Solution
-We introduce **KubeWhisperer**, a neuro-symbolic system designed to close the autonomic feedback loop (MAPE-K). Unlike passive monitoring tools, KubeWhisperer actively intercepts failure signals and utilizes a Vector Space Model (VSM) to correlate error logs with technical solutions.
+We introduce **KUBEWHISPER**, a neuro-symbolic system designed to close the autonomic feedback loop (MAPE-K). Unlike passive monitoring tools, KUBEWHISPER actively intercepts failure signals and utilizes a Vector Space Model (VSM) to correlate error logs with technical solutions.
 
 ## 1.4 Key Contributions
 This paper makes the following contributions:

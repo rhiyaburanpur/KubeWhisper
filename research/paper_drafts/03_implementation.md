@@ -16,7 +16,7 @@ Brain over HTTP.
 Duplicate diagnosis requests for the same pod are suppressed for 300 seconds. In persistent
 crash loop scenarios this reduced outbound API calls by approximately 90%.
 
-**Authentication:** The Go agent and Python Brain share a secret (`KUBEWHISPERER_API_KEY`)
+**Authentication:** The Go agent and Python Brain share a secret (`KUBEWHISPER_API_KEY`)
 transmitted as an `X-API-Key` HTTP header on every `/analyze` request. The brain rejects
 requests with missing or incorrect keys with HTTP 403.
 

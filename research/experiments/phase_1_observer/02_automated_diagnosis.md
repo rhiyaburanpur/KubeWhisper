@@ -3,7 +3,7 @@
 **Subject:** Automated Extraction of Failure Context
 
 **1. Setup**
-* Tool: KubeWhisperer (Observer Module v1.5)
+* Tool: KUBEWHISPER (Observer Module v1.5)
 * Target: Pod 'bad-student' (Simulated Memory Leak)
 * Constraint: No human intervention allowed during the crash window.
 

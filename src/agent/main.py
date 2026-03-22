@@ -39,7 +39,7 @@ def should_diagnose(pod_name):
     return True
 
 def monitor_cluster():
-    print(" [agent] KubeWhisperer Observer Starting...")
+    print(" [agent] KUBEWHISPER Observer Starting...")
     config.load_kube_config()
     v1 = client.CoreV1Api()
     w = watch.Watch()
@@ -81,7 +81,7 @@ def monitor_cluster():
                     diagnosis = brain.reason(logs)
                     
                     print("\n" + "="*40)
-                    print(" KUBEWHISPERER DIAGNOSIS")
+                    print(" KUBEWHISPER DIAGNOSIS")
                     print("="*40)
                     print(diagnosis)
                     print("="*40 + "\n")

@@ -6,12 +6,12 @@ COPY src/go-agent/go.mod src/go-agent/go.sum ./
 RUN go mod download
 
 COPY src/go-agent/main.go .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o kubewhisperer-agent .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o KUBEWHISPER-agent .
 
 FROM gcr.io/distroless/static:nonroot
 
-COPY --from=builder /build/kubewhisperer-agent /kubewhisperer-agent
+COPY --from=builder /build/KUBEWHISPER-agent /KUBEWHISPER-agent
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/kubewhisperer-agent"]
+ENTRYPOINT ["/KUBEWHISPER-agent"]

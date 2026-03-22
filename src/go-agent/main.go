@@ -156,9 +156,9 @@ func sendCrashReport(podName string, logs string, crashReason string, t1Ms float
 		brainURL = "http://localhost:8000/analyze"
 	}
 
-	apiKey := os.Getenv("KUBEWHISPERER_API_KEY")
+	apiKey := os.Getenv("KUBEWHISPER_API_KEY")
 	if apiKey == "" {
-		logJSON("error", "KUBEWHISPERER_API_KEY not set. Aborting.", podName, traceID, "missing env var")
+		logJSON("error", "KUBEWHISPER_API_KEY not set. Aborting.", podName, traceID, "missing env var")
 		return
 	}
 
@@ -255,7 +255,7 @@ func getLogs(clientset *kubernetes.Clientset, podName string) string {
 // --- Main ---
 
 func main() {
-	logJSON("info", "KubeWhisperer Go-Agent starting", "", "", "")
+	logJSON("info", "KUBEWHISPER Go-Agent starting", "", "", "")
 
 	userHomeDir, _ := os.UserHomeDir()
 	kubeConfigPath := filepath.Join(userHomeDir, ".kube", "config")

@@ -1,4 +1,4 @@
-# KubeWhisperer
+# KUBEWHISPER
 
 > An autonomic Kubernetes failure-analysis agent built on the MAPE-K control loop.
 > Watches your cluster in real time, intercepts pod failures, and delivers
@@ -34,7 +34,7 @@ fetch the logs, read them, cross-reference documentation, and decide on a fix. I
 baseline study this process takes **over 60 seconds** even for experienced operators —
 and longer for transient crashes where logs disappear between restarts.
 
-KubeWhisperer eliminates that gap. From the moment a pod enters `CrashLoopBackOff`, the
+KUBEWHISPER eliminates that gap. From the moment a pod enters `CrashLoopBackOff`, the
 system captures logs, retrieves relevant documentation from a local vector database, and
 returns a structured root-cause + `kubectl` fix command with full MAPE-K stage timestamps.
 
@@ -42,7 +42,7 @@ returns a structured root-cause + `kubectl` fix command with full MAPE-K stage t
 
 ## Architecture
 
-KubeWhisperer is a hybrid system split across two processes that communicate over HTTP.
+KUBEWHISPER is a hybrid system split across two processes that communicate over HTTP.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -176,13 +176,13 @@ Open `.env` and fill in the required values:
 
 ```env
 GEMINI_API_KEY=your_google_gemini_api_key_here
-KUBEWHISPERER_API_KEY=any_strong_random_string_you_choose
+KUBEWHISPER_API_KEY=any_strong_random_string_you_choose
 DB_PATH=db_storage
 ```
 
 `GEMINI_API_KEY` — get this from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-`KUBEWHISPERER_API_KEY` — shared secret between the Go agent and the Python Brain.
+`KUBEWHISPER_API_KEY` — shared secret between the Go agent and the Python Brain.
 Generate one with:
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
@@ -244,7 +244,7 @@ curl http://localhost:8000/metrics
 ```bash
 cd src/go-agent
 export BRAIN_URL=http://localhost:8000/analyze
-export KUBEWHISPERER_API_KEY=your_key_from_env
+export KUBEWHISPER_API_KEY=your_key_from_env
 go run .
 ```
 
@@ -252,13 +252,13 @@ go run .
 ```powershell
 cd src\go-agent
 $env:BRAIN_URL = "http://localhost:8000/analyze"
-$env:KUBEWHISPERER_API_KEY = "your_key_from_env"
+$env:KUBEWHISPER_API_KEY = "your_key_from_env"
 go run .
 ```
 
 Expected startup output:
 ```json
-{"level":"info","service":"go-agent","msg":"KubeWhisperer Go-Agent starting"}
+{"level":"info","service":"go-agent","msg":"KUBEWHISPER Go-Agent starting"}
 {"level":"info","service":"go-agent","msg":"Watching for CrashLoopBackOff and ImagePullBackOff events"}
 ```
 
@@ -308,7 +308,7 @@ Receives a crash report from the Go Agent and returns a structured diagnosis.
 **Request:**
 ```
 POST /analyze
-X-API-Key: <KUBEWHISPERER_API_KEY>
+X-API-Key: <KUBEWHISPER_API_KEY>
 Content-Type: application/json
 
 {
@@ -345,10 +345,10 @@ Key metrics:
 
 | Metric | Type | Description |
 |---|---|---|
-| `kubewhisperer_diagnosis_requests_total` | Counter | Total requests by status (`success`/`error`) |
-| `kubewhisperer_diagnosis_duration_seconds` | Histogram | End-to-end diagnosis latency |
-| `kubewhisperer_rag_context_hits_total` | Counter | RAG retrieval hit/miss rate |
-| `kubewhisperer_build_info` | Info | Version and model metadata |
+| `KUBEWHISPER_diagnosis_requests_total` | Counter | Total requests by status (`success`/`error`) |
+| `KUBEWHISPER_diagnosis_duration_seconds` | Histogram | End-to-end diagnosis latency |
+| `KUBEWHISPER_rag_context_hits_total` | Counter | RAG retrieval hit/miss rate |
+| `KUBEWHISPER_build_info` | Info | Version and model metadata |
 
 ### `GET /`
 
@@ -369,7 +369,7 @@ ground truth labels for evaluation.
 | Network / RBAC | ImagePullBackOff variants, DNS failure, RBAC denial, NetworkPolicy | 35–50 |
 
 All 50 scenarios have `watchdog_resolves: false` — a simple restart loop will not fix
-any of them. This establishes that KubeWhisperer adds value beyond a basic liveness probe.
+any of them. This establishes that KUBEWHISPER adds value beyond a basic liveness probe.
 
 ---
 
@@ -380,8 +380,8 @@ The system is deployable as two container images on any Kubernetes cluster.
 ### Build images
 
 ```bash
-docker build -f Dockerfile.brain -t kubewhisperer-brain:latest .
-docker build -f Dockerfile.agent -t kubewhisperer-agent:latest .
+docker build -f Dockerfile.brain -t KUBEWHISPER-brain:latest .
+docker build -f Dockerfile.agent -t KUBEWHISPER-agent:latest .
 ```
 
 ### Deploy to cluster
@@ -395,8 +395,8 @@ kubectl apply -f k8s/agent-daemonset.yaml
 
 For Kind clusters, load images before deploying:
 ```bash
-kind load docker-image kubewhisperer-brain:latest --name kubewhisper-lab
-kind load docker-image kubewhisperer-agent:latest --name kubewhisper-lab
+kind load docker-image KUBEWHISPER-brain:latest --name kubewhisper-lab
+kind load docker-image KUBEWHISPER-agent:latest --name kubewhisper-lab
 ```
 
 ---
@@ -406,7 +406,7 @@ kind load docker-image kubewhisperer-agent:latest --name kubewhisper-lab
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `GEMINI_API_KEY` | Yes | — | Google Gemini API key |
-| `KUBEWHISPERER_API_KEY` | Yes | — | Shared secret for `/analyze` auth |
+| `KUBEWHISPER_API_KEY` | Yes | — | Shared secret for `/analyze` auth |
 | `DB_PATH` | No | `db_storage` | ChromaDB persistence path |
 | `BRAIN_URL` | No | `http://localhost:8000/analyze` | Go agent target URL |
 | `LIBRARIAN_CONFIG` | No | `config/sources.yaml` | Knowledge ingestion config |
