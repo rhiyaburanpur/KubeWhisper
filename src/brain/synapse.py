@@ -1,8 +1,14 @@
+import json
 import os
+import re
+from typing import Optional
+
 from google import genai
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential
+
 from src.brain.memory import KnowledgeBase
+from src.brain.validator import DiagnosisSchema
 
 
 class Synapse:
@@ -31,10 +37,32 @@ class Synapse:
             print(f" [synapse] API Error Details: {e}")
             raise
 
-    def reason(self, error_log):
+    def _parse_structured_response(self, raw: str) -> Optional[DiagnosisSchema]:
         """
-        Runs the RAG pipeline and returns a (diagnosis, rag_hit) tuple.
-        rag_hit is True if the vector store returned at least one context chunk.
+        Attempts to parse Gemini's response into a DiagnosisSchema.
+        Gemini is prompted to return a JSON block. This method extracts
+        and validates that block. Returns None if parsing fails.
+        """
+        match = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
+        if not match:
+            match = re.search(r"(\{.*\})", raw, re.DOTALL)
+
+        if not match:
+            print(" [synapse] Could not locate JSON block in Gemini response.")
+            return None
+
+        try:
+            data = json.loads(match.group(1))
+            return DiagnosisSchema(**data)
+        except Exception as e:
+            print(f" [synapse] Schema parse error: {e}")
+            return None
+
+    def reason(self, error_log: str) -> tuple[str, bool, Optional[DiagnosisSchema]]:
+        """
+        Runs the RAG pipeline.
+        Returns (diagnosis_str, rag_hit, parsed_schema).
+        parsed_schema is None if Gemini output could not be parsed.
         """
         print(" [synapse] Retrieving relevant knowledge...")
         context = self.memory.recall(error_log, n_results=1)
@@ -57,22 +85,26 @@ class Synapse:
 {error_log}
 
 **Your Task:**
-Analyze this crash and provide:
-1. **Root Cause** (one clear sentence explaining what happened)
-2. **Fix Command** (the exact `kubectl` command to resolve this issue)
+Analyze this crash and respond ONLY with a JSON block in the following exact format. Do not include any text before or after the JSON block.
 
-Format as:
-**Root Cause:** [explanation]
-**Fix Command:**
-```bash
-[command here]
+```json
+{{
+  "root_cause": "<one sentence explaining what caused the crash>",
+  "confidence": <float between 0.0 and 1.0 representing your confidence>,
+  "remediation_commands": ["<kubectl command 1>", "<kubectl command 2>"],
+  "affected_resources": ["<resource/name>"]
+}}
 ```
+
+Use only safe kubectl verbs: get, describe, logs, rollout, set, scale, apply, create, patch, top.
+Do not use: delete, --force, --grace-period=0.
 """
         print(" [synapse] Consulting Gemini AI...")
         try:
-            diagnosis = self._ask_gemini(prompt)
+            raw_response = self._ask_gemini(prompt)
             print(" [synapse] Analysis complete.")
-            return diagnosis, rag_hit
+            parsed = self._parse_structured_response(raw_response)
+            return raw_response, rag_hit, parsed
         except Exception as e:
             error_msg = (
                 f"AI Analysis Failed: {type(e).__name__}\n\n"
@@ -83,4 +115,4 @@ Format as:
                 f"4. Resource usage:  kubectl top pod <pod-name>"
             )
             print(f" [synapse] ERROR: {e}")
-            return error_msg, rag_hit
+            return error_msg, rag_hit, None
