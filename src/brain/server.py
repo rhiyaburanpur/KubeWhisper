@@ -21,6 +21,7 @@ from src.brain.metrics import (
 )
 from src.brain.mttr import MTTRRecord, now_ms, write_mttr_record
 from src.brain.synapse import Synapse
+from src.brain.validator import validate_response
 import uvicorn
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -36,6 +37,8 @@ def log(level: str, msg: str, **kwargs):
 API_KEY = os.getenv("KUBEWHISPER_API_KEY")
 if not API_KEY:
     raise RuntimeError("CRITICAL: KUBEWHISPER_API_KEY environment variable not set.")
+
+HALLUCINATION_LOG_PATH = os.getenv("HALLUCINATION_LOG_PATH", "hallucination_log.jsonl")
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -59,6 +62,25 @@ app = FastAPI(title="KUBEWHISPER Neural Engine")
 log("info", "Loading Synapse model...")
 brain = Synapse()
 log("info", "Brain online.")
+
+
+def write_hallucination_record(
+    trace_id: str,
+    pod_name: str,
+    scenario_id: str,
+    failure_reason: str,
+    raw_llm_output: str,
+) -> None:
+    record = {
+        "trace_id": trace_id,
+        "pod_name": pod_name,
+        "scenario_id": scenario_id,
+        "failure_reason": failure_reason,
+        "raw_llm_output": raw_llm_output,
+        "timestamp_ms": now_ms(),
+    }
+    with open(HALLUCINATION_LOG_PATH, "a") as f:
+        f.write(json.dumps(record) + "\n")
 
 
 @app.get("/")
@@ -93,13 +115,49 @@ def analyze_crash(
         raise HTTPException(status_code=400, detail="No logs provided")
 
     try:
-        diagnosis, rag_hit = brain.reason(report.error_log)
+        diagnosis, rag_hit, parsed_schema = brain.reason(report.error_log)
         t4_execute_ms = now_ms()
 
         duration_s = (t4_execute_ms - t3_plan_ms) / 1000
         DIAGNOSIS_DURATION_SECONDS.observe(duration_s)
         DIAGNOSIS_REQUESTS_TOTAL.labels(status="success").inc()
         RAG_CONTEXT_HITS_TOTAL.labels(hit=str(rag_hit).lower()).inc()
+
+        validation_passed = False
+        failure_reason = None
+
+        if parsed_schema is None:
+            failure_reason = "parse_failure: could not extract structured JSON from LLM output"
+            write_hallucination_record(
+                trace_id=trace_id,
+                pod_name=report.pod_name,
+                scenario_id=report.scenario_id,
+                failure_reason=failure_reason,
+                raw_llm_output=diagnosis,
+            )
+            log("warn", "Schema parse failure",
+                trace_id=trace_id,
+                pod=report.pod_name,
+                failure_reason=failure_reason,
+            )
+        else:
+            allowlist_failure = validate_response(parsed_schema)
+            if allowlist_failure:
+                failure_reason = allowlist_failure
+                write_hallucination_record(
+                    trace_id=trace_id,
+                    pod_name=report.pod_name,
+                    scenario_id=report.scenario_id,
+                    failure_reason=failure_reason,
+                    raw_llm_output=diagnosis,
+                )
+                log("warn", "Command allowlist violation",
+                    trace_id=trace_id,
+                    pod=report.pod_name,
+                    failure_reason=failure_reason,
+                )
+            else:
+                validation_passed = True
 
         mttr_ms = None
         if report.t1_monitor_ms is not None:
@@ -126,6 +184,7 @@ def analyze_crash(
             duration_seconds=round(duration_s, 3),
             mttr_ms=round(mttr_ms, 2) if mttr_ms else None,
             rag_hit=rag_hit,
+            validation_passed=validation_passed,
         )
 
         return {
@@ -133,6 +192,8 @@ def analyze_crash(
             "diagnosis": diagnosis,
             "trace_id": trace_id,
             "scenario_id": report.scenario_id,
+            "validation_passed": validation_passed,
+            "failure_reason": failure_reason,
             "timestamps": {
                 "t1_monitor_ms": report.t1_monitor_ms,
                 "t2_analyze_ms": report.t2_analyze_ms,
