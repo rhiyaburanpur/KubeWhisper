@@ -16,3 +16,6 @@ pyyaml>=6.0.1
 
 # Phase 7: Observability
 prometheus-client>=0.20.0
+
+# Phase 11: Rag vs Fine-tuning
+Httpx>=0.24.0

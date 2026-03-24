@@ -39,42 +39,71 @@ class Synapse:
 
     def _parse_structured_response(self, raw: str) -> Optional[DiagnosisSchema]:
         """
-        Attempts to parse Gemini's response into a DiagnosisSchema.
-        Gemini is prompted to return a JSON block. This method extracts
-        and validates that block. Returns None if parsing fails.
+        Attempts to extract a DiagnosisSchema from Gemini's raw response.
+
+        Tries four strategies in order:
+          1. JSON fenced with ```json ... ```
+          2. JSON fenced with ``` ... ``` (no language tag)
+          3. Bare JSON object using a non-greedy scan for the outermost { }
+          4. json.loads on the entire stripped response
+
+        Without RAG context, Gemini sometimes omits the fence or produces
+        slightly different formatting. This method is intentionally tolerant
+        so that format drift does not inflate the hallucination rate.
         """
-        match = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
-        if not match:
-            match = re.search(r"(\{.*\})", raw, re.DOTALL)
+        candidates = []
 
-        if not match:
-            print(" [synapse] Could not locate JSON block in Gemini response.")
-            return None
+        m = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
+        if m:
+            candidates.append(m.group(1))
 
-        try:
-            data = json.loads(match.group(1))
-            return DiagnosisSchema(**data)
-        except Exception as e:
-            print(f" [synapse] Schema parse error: {e}")
-            return None
+        m = re.search(r"```\s*(.*?)\s*```", raw, re.DOTALL)
+        if m:
+            candidates.append(m.group(1))
 
-    def reason(self, error_log: str) -> tuple[str, bool, Optional[DiagnosisSchema]]:
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            candidates.append(raw[start:end + 1])
+
+        candidates.append(raw.strip())
+
+        for candidate in candidates:
+            try:
+                data = json.loads(candidate)
+                schema = DiagnosisSchema(**data)
+                return schema
+            except Exception:
+                continue
+
+        print(" [synapse] Could not parse structured JSON from Gemini response.")
+        print(f" [synapse] Raw response preview: {raw[:200]!r}")
+        return None
+
+    def reason(self, error_log: str, use_rag: bool = True) -> tuple[str, bool, Optional[DiagnosisSchema]]:
         """
-        Runs the RAG pipeline.
+        Runs the diagnosis pipeline.
         Returns (diagnosis_str, rag_hit, parsed_schema).
-        parsed_schema is None if Gemini output could not be parsed.
+
+        use_rag: when False, skips ChromaDB retrieval entirely. The prompt
+        receives no knowledge base context. Used for the Phase 11 ablation study
+        to isolate how much of the system's performance comes from RAG vs the
+        base model's training data.
         """
-        print(" [synapse] Retrieving relevant knowledge...")
-        context = self.memory.recall(error_log, n_results=1)
-
-        rag_hit = bool(context and context[0])
-
-        if not rag_hit:
-            context_text = "No relevant documentation found in knowledge base."
-            print(" [synapse] No context found. Relying on model knowledge.")
+        if use_rag:
+            print(" [synapse] Retrieving relevant knowledge...")
+            context = self.memory.recall(error_log, n_results=1)
+            rag_hit = bool(context and context[0])
+            if not rag_hit:
+                context_text = "No relevant documentation found in knowledge base."
+                print(" [synapse] No context found. Relying on model knowledge.")
+            else:
+                context_text = context[0]
+                print(f" [synapse] Retrieved context: {context_text[:100]}...")
         else:
-            context_text = context[0]
-            print(f" [synapse] Retrieved context: {context_text[:100]}...")
+            print(" [synapse] RAG disabled (ablation mode). Skipping knowledge base retrieval.")
+            context_text = "No context provided. Diagnose using model knowledge only."
+            rag_hit = False
 
         prompt = f"""You are a Kubernetes Site Reliability Engineer (SRE) with deep expertise in container orchestration and debugging.
 

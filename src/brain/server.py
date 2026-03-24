@@ -55,6 +55,7 @@ class CrashReport(BaseModel):
     scenario_id: Optional[str] = "unknown"
     t1_monitor_ms: Optional[float] = None
     t2_analyze_ms: Optional[float] = None
+    ablation_mode: bool = False
 
 
 app = FastAPI(title="KUBEWHISPER Neural Engine")
@@ -108,6 +109,7 @@ def analyze_crash(
         scenario_id=report.scenario_id,
         t1_monitor_ms=report.t1_monitor_ms,
         t2_analyze_ms=report.t2_analyze_ms,
+        ablation_mode=report.ablation_mode,
     )
 
     if not report.error_log:
@@ -115,7 +117,10 @@ def analyze_crash(
         raise HTTPException(status_code=400, detail="No logs provided")
 
     try:
-        diagnosis, rag_hit, parsed_schema = brain.reason(report.error_log)
+        diagnosis, rag_hit, parsed_schema = brain.reason(
+            report.error_log,
+            use_rag=not report.ablation_mode,
+        )
         t4_execute_ms = now_ms()
 
         duration_s = (t4_execute_ms - t3_plan_ms) / 1000
@@ -185,6 +190,7 @@ def analyze_crash(
             mttr_ms=round(mttr_ms, 2) if mttr_ms else None,
             rag_hit=rag_hit,
             validation_passed=validation_passed,
+            ablation_mode=report.ablation_mode,
         )
 
         return {
