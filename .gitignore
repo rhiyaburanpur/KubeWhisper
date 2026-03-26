@@ -10,3 +10,4 @@ mttr_log.jsonl
 hallucination_log.jsonl
 results.csv
 src/go-agent/kubewhisper-agent.exe
+results_ablation.csv
